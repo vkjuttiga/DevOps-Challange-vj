@@ -1,0 +1,141 @@
+
+pipeline {
+    agent any
+    
+    tools {
+        // Requires "Terraform" to be configured in Global Tool Configuration
+        // Name must match what you configure in Jenkins UI
+        terraform 'terraform' 
+    }
+    
+    environment {
+        AWS_REGION = 'ap-south-1'
+        // Add local bin to PATH for tools we download
+        PATH = "${WORKSPACE}/bin:${PATH}"
+    }
+    
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev', 'staging', 'production'],
+            description: 'Target deployment environment'
+        )
+        booleanParam(
+            name: 'SKIP_SECURITY_SCAN',
+            defaultValue: false,
+            description: 'Skip security scanning'
+        )
+        booleanParam(
+            name: 'RUN_TERRAFORM',
+            defaultValue: true,
+            description: 'Run Terraform plan/apply'
+        )
+    }
+    
+    stages {
+        // ============================================
+        // STAGE 1: Setup Tools
+        // ============================================
+        stage('Setup Tools') {
+            steps {
+                echo "📥 Installing required tools locally..."
+                sh '''
+                    mkdir -p bin
+                    
+                    # 1. Install tfsec
+                    if ! command -v tfsec &> /dev/null; then
+                        echo "Installing tfsec..."
+                        curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+                        # The install script puts it in /usr/local/bin, copy to local bin if needed or just use it
+                        cp /usr/local/bin/tfsec bin/ || true
+                    fi
+                    
+                    # 2. Check Terraform
+                    echo "Terraform version:"
+                    terraform version
+                '''
+            }
+        }
+        
+        // ============================================
+        // STAGE 2: Terraform Security Scan
+        // ============================================
+        stage('Terraform Security Scan') {
+            when {
+                allOf {
+                    expression { params.RUN_TERRAFORM }
+                    not { expression { params.SKIP_SECURITY_SCAN } }
+                }
+            }
+            steps {
+                echo "🔒 Running Terraform security scans..."
+                
+                // Runs locally in workspace - no volume mounts needed!
+                sh 'tfsec terraform/ --format lovely || echo "tfsec findings found (continuing for demo)"'
+            }
+        }
+        
+        // ============================================
+        // STAGE 3: Terraform Init & Plan  
+        // ============================================
+        stage('Terraform Init & Plan') {
+            when {
+                expression { params.RUN_TERRAFORM }
+            }
+            steps {
+                echo "🏗️ Running Terraform Init & Plan..."
+                
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
+                                  credentialsId: 'aws-creds',
+                                  accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                                  secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+                    dir("terraform/environments/${params.ENVIRONMENT}") {
+                        sh '''
+                            # Init
+                            terraform init
+                            
+                            # Plan
+                            terraform plan -out=tfplan
+                        '''
+                    }
+                }
+            }
+        }
+        
+        // ============================================
+        // STAGE 4: Terraform Apply (with approval)
+        // ============================================
+        stage('Terraform Apply') {
+            when {
+                expression { params.RUN_TERRAFORM }
+            }
+            steps {
+                input message: 'Apply Terraform changes?', ok: 'Apply'
+                
+                echo "🚀 Applying Terraform..."
+                
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
+                                  credentialsId: 'aws-creds',
+                                  accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                                  secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+                    dir("terraform/environments/${params.ENVIRONMENT}") {
+                        sh 'terraform apply -auto-approve tfplan'
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "✅ Pipeline completed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed!"
+        }
+        always {
+            // Cleanup
+            cleanWs()
+        }
+    }
+}
