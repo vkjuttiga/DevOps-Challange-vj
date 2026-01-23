@@ -32,7 +32,7 @@ resource "aws_subnet" "public" {
     Name                                        = "${var.vpc_name}-public-${count.index + 1}"
     Environment                                 = var.environment
     "kubernetes.io/role/elb"                    = "1"
-    "kubernetes.io/cluster/${var.vpc_name}-eks" = "shared"
+    "kubernetes.io/cluster/${var.vpc_name}" = "shared"
   })
 }
 
@@ -47,7 +47,7 @@ resource "aws_subnet" "private" {
     Name                                        = "${var.vpc_name}-private-${count.index + 1}"
     Environment                                 = var.environment
     "kubernetes.io/role/internal-elb"           = "1"
-    "kubernetes.io/cluster/${var.vpc_name}-eks" = "shared"
+    "kubernetes.io/cluster/${var.vpc_name}" = "shared"
   })
 }
 
