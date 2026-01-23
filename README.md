@@ -37,7 +37,7 @@ devops-challenge/
 
 ## Documentation
 
-- [**SETUP.md**](SETUP.md) - Detailed setup instructions
+- [**SETUP.md**](docs/SETUP.md) - Detailed setup instructions
 - [**ARCHITECTURE.md**](ARCHITECTURE.md) - Technical decisions and diagrams
 
 
