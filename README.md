@@ -8,7 +8,7 @@ Production-ready DevOps infrastructure featuring Terraform, Jenkins CI/CD, and K
 
 ## Architecture
 
-![Challenge-Architecture](https://github.com/user-attachments/assets/8b7d8b2a-80d4-4b1a-bde9-7fa0ed37959e)
+![Architecture diagram](https://github.com/user-attachments/assets/47642f4b-5cfd-467c-968f-345593ef7077)
 
 
 ## Project Structure
