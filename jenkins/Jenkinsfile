@@ -38,7 +38,7 @@ pipeline {
         // ============================================
         stage('Setup Tools') {
             steps {
-                echo "📥 Installing required tools locally..."
+                echo "Installing required tools locally"
                 sh '''
                     mkdir -p bin
                     
@@ -83,7 +83,7 @@ pipeline {
                 expression { params.RUN_TERRAFORM }
             }
             steps {
-                echo "🏗️ Running Terraform Init & Plan..."
+                echo "Running Terraform Init & Plan"
                 
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
                                   credentialsId: 'aws-creds',
@@ -112,7 +112,7 @@ pipeline {
             steps {
                 input message: 'Apply Terraform changes?', ok: 'Apply'
                 
-                echo "🚀 Applying Terraform..."
+                echo "Applying Terraform"
                 
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
                                   credentialsId: 'aws-creds',
@@ -128,10 +128,10 @@ pipeline {
     
     post {
         success {
-            echo "✅ Pipeline completed successfully!"
+            echo "Pipeline completed successfully!"
         }
         failure {
-            echo "❌ Pipeline failed!"
+            echo "Pipeline failed!"
         }
         always {
             // Cleanup
